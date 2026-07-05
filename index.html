@@ -1,0 +1,820 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>bitacora ~ terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-powershell.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-swift.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<style>
+  :root{
+    --bg:#0e1013;
+    --panel:#16191d;
+    --panel-2:#1c2025;
+    --border:#282d33;
+    --text:#d7dce1;
+    --text-muted:#767f8a;
+    --amber:#e8a33d;
+    --amber-dim:#3a2e18;
+    --error:#e0655c;
+    --apunte:#4fb8ae;
+    --comando:#5b8def;
+    --general:#9aa3af;
+    --green:#7ec87a;
+    --mono:'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--mono);
+    min-height:100vh;
+    font-size:14px;
+  }
+  ::selection{background:var(--amber);color:#0e1013;}
+  a{color:var(--amber);}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;}
+
+  .wrap{max-width:960px;margin:0 auto;padding:0 0 70px;}
+
+  /* ---------- terminal chrome ---------- */
+  .termbar{
+    background:#1a1d21;
+    border:1px solid var(--border);
+    border-bottom:none;
+    border-radius:8px 8px 0 0;
+    padding:10px 14px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:20px;
+  }
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .dot.red{background:#e0655c;}
+  .dot.yellow{background:#e8a33d;}
+  .dot.green{background:#7ec87a;}
+  .termtitle{
+    flex:1;
+    text-align:center;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-right:44px;
+  }
+
+  .screen{
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-top:none;
+    border-radius:0 0 8px 8px;
+    padding:20px 20px 26px;
+  }
+
+  .prompt{
+    color:var(--green);
+    font-weight:600;
+  }
+  .prompt .path{color:var(--comando);}
+  .cursor{
+    display:inline-block;
+    width:8px;height:15px;
+    background:var(--amber);
+    margin-left:4px;
+    vertical-align:middle;
+    animation:blink 1s steps(2) infinite;
+  }
+  @keyframes blink{50%{opacity:0;}}
+
+  h1{
+    font-size:16px;
+    margin:0 0 2px;
+    font-weight:700;
+    color:var(--text);
+  }
+  .tagline{font-size:11.5px;color:var(--text-muted);margin-bottom:16px;}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;gap:2px;margin-bottom:18px;border-bottom:1px solid var(--border);}
+  .tab{
+    padding:8px 16px;
+    font-size:12.5px;
+    color:var(--text-muted);
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+    user-select:none;
+  }
+  .tab.active{color:var(--amber);border-bottom-color:var(--amber);}
+  .tab:hover{color:var(--text);}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  #count{font-size:11px;color:var(--text-muted);}
+
+  /* ---------- config banner ---------- */
+  .banner{
+    background:var(--amber-dim);
+    border:1px solid var(--amber);
+    color:#f3d9ab;
+    padding:12px 14px;
+    border-radius:6px;
+    font-size:12.5px;
+    line-height:1.6;
+    margin-bottom:18px;
+  }
+  .banner code{background:rgba(0,0,0,0.3);padding:1px 5px;border-radius:3px;}
+
+  /* ---------- controls ---------- */
+  .controls{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  input[type=text], textarea, select{
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    border-radius:5px;
+    padding:8px 11px;
+    font-family:var(--mono);
+    font-size:13px;
+    outline:none;
+  }
+  input[type=text]:focus, textarea:focus, select:focus{border-color:var(--amber);}
+  #search{flex:1;min-width:200px;}
+  #search::placeholder{color:var(--text-muted);}
+
+  .pill{
+    font-size:11px;
+    padding:5px 11px;
+    border-radius:4px;
+    border:1px solid var(--border);
+    background:var(--panel);
+    color:var(--text-muted);
+    cursor:pointer;
+    user-select:none;
+    white-space:nowrap;
+  }
+  .pill:hover{border-color:var(--text-muted);}
+  .pill.active{color:#0e1013;border-color:transparent;font-weight:600;}
+  .pill.active[data-tipo="error"], .pill.active[data-sistema="__none__"]{background:var(--error);}
+  .pill.active[data-tipo="apunte"]{background:var(--apunte);}
+  .pill.active[data-tipo="comando"]{background:var(--comando);}
+  .pill.active[data-tipo="general"]{background:var(--general);}
+  .pill.active[data-tipo="todos"], .pill.active[data-sistema="todos"]{background:var(--amber);}
+  .pill.active[data-sistema="macOS"]{background:#c9c9c9;}
+  .pill.active[data-sistema="Windows"]{background:var(--comando);}
+  .pill.active[data-sistema="Linux"]{background:var(--apunte);}
+  .pill.active[data-sistema="iOS"]{background:#c9c9c9;}
+  .pill.active[data-sistema="Multiplataforma"]{background:var(--amber);}
+
+  .tagchip{
+    font-size:11px;
+    padding:3px 8px;
+    border-radius:4px;
+    background:var(--panel-2);
+    color:var(--text-muted);
+    border:1px solid var(--border);
+    cursor:pointer;
+  }
+  .tagchip.active{color:var(--amber);border-color:var(--amber);}
+
+  button.primary{
+    background:var(--amber);
+    color:#0e1013;
+    border:none;
+    font-family:var(--mono);
+    font-weight:700;
+    font-size:12.5px;
+    padding:9px 15px;
+    border-radius:5px;
+    cursor:pointer;
+  }
+  button.primary:hover{filter:brightness(1.08);}
+  button.ghost{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--text-muted);
+    font-family:var(--mono);
+    font-size:12px;
+    padding:7px 11px;
+    border-radius:5px;
+    cursor:pointer;
+  }
+  button.ghost:hover{color:var(--text);border-color:var(--text-muted);}
+
+  /* ---------- entries ---------- */
+  #entries{display:flex;flex-direction:column;gap:9px;}
+  .entry{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-left:3px solid var(--general);
+    border-radius:5px;
+    padding:12px 14px;
+  }
+  .entry[data-tipo="error"]{border-left-color:var(--error);}
+  .entry[data-tipo="apunte"]{border-left-color:var(--apunte);}
+  .entry[data-tipo="comando"]{border-left-color:var(--comando);}
+
+  .entry-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .badge{
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    padding:2px 6px;
+    border-radius:3px;
+    font-weight:600;
+  }
+  .badge[data-tipo="error"]{color:var(--error);background:rgba(224,101,92,0.12);}
+  .badge[data-tipo="apunte"]{color:var(--apunte);background:rgba(79,184,174,0.12);}
+  .badge[data-tipo="comando"]{color:var(--comando);background:rgba(91,141,239,0.12);}
+  .badge[data-tipo="general"]{color:var(--general);background:rgba(154,163,175,0.12);}
+  .badge.sistema{color:var(--text-muted);background:var(--panel-2);border:1px solid var(--border);text-transform:none;}
+
+  .entry-title{font-weight:600;font-size:14px;color:var(--text);}
+  .entry-ctx{font-size:11px;color:var(--text-muted);}
+  .entry-time{margin-left:auto;font-size:10.5px;color:var(--text-muted);}
+  .entry-body{
+    font-size:13.5px;
+    line-height:1.55;
+    color:var(--text);
+    white-space:pre-wrap;
+    margin:8px 0;
+  }
+  .code-block{position:relative;margin:8px 0;}
+  .code-block pre{
+    margin:0;
+    border-radius:5px;
+    font-size:12.5px;
+    max-height:340px;
+  }
+  .copy-btn{
+    position:absolute;
+    top:6px;right:6px;
+    font-size:10.5px;
+    background:rgba(0,0,0,0.4);
+    color:var(--text-muted);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:3px 8px;
+    cursor:pointer;
+  }
+  .copy-btn:hover{color:var(--amber);border-color:var(--amber);}
+
+  .entry-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .entry-actions{display:flex;gap:8px;margin-top:10px;}
+  .entry-actions button{
+    font-family:var(--mono);
+    font-size:11px;
+    background:transparent;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    padding:2px 0;
+  }
+  .entry-actions button:hover{color:var(--amber);}
+  .entry-actions button.danger:hover{color:var(--error);}
+
+  .empty, .loading{text-align:center;color:var(--text-muted);font-size:13px;padding:46px 10px;}
+
+  /* ---------- modal ---------- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(6,7,9,0.75);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    overflow-y:auto;
+    z-index:50;
+  }
+  .overlay.open{display:flex;}
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:8px;
+    width:100%;
+    max-width:560px;
+    padding:22px;
+  }
+  .modal h2{font-size:14px;margin:0 0 16px;color:var(--amber);}
+  .field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+  .field label{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;}
+  .field textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.5;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:6px;}
+
+  /* ---------- sandbox ---------- */
+  .sandbox-wrap{display:flex;flex-direction:column;gap:12px;}
+  #sandboxCode{
+    width:100%;
+    min-height:160px;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .sandbox-actions{display:flex;gap:8px;align-items:center;}
+  .sandbox-hint{font-size:11px;color:var(--text-muted);margin-left:auto;}
+  #sandboxOutput{
+    background:#0a0b0d;
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:12px 14px;
+    font-size:12.5px;
+    line-height:1.6;
+    min-height:120px;
+    max-height:340px;
+    overflow-y:auto;
+    white-space:pre-wrap;
+  }
+  .out-line{margin:0 0 3px;}
+  .out-log{color:var(--text);}
+  .out-error{color:var(--error);}
+  .out-return{color:var(--green);}
+  .out-muted{color:var(--text-muted);}
+
+  @media (max-width:560px){.entry-time{margin-left:0;}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="termbar">
+    <span class="dot red"></span><span class="dot yellow"></span><span class="dot green"></span>
+    <div class="termtitle">marlon@bitacora — zsh</div>
+  </div>
+
+  <div class="screen">
+    <div style="margin-bottom:14px;">
+      <span class="prompt">marlon@bitacora <span class="path">~</span> %</span><span class="cursor"></span>
+    </div>
+    <h1>bitacora</h1>
+    <div class="tagline">errores · soluciones · comandos · apuntes · sandbox de pruebas</div>
+
+    <div id="configBanner" class="banner" style="display:none;">
+      Falta configurar la conexión a Supabase. Abre <code>index.html</code>, busca
+      <code>SUPABASE_URL</code> y <code>SUPABASE_ANON_KEY</code> al inicio del
+      <code>&lt;script&gt;</code> principal y pega los valores de tu proyecto
+      (Project Settings → API Keys en supabase.com). Luego recarga esta página.
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-view="bitacora">bitacora</div>
+      <div class="tab" data-view="sandbox">sandbox (js)</div>
+    </div>
+
+    <!-- ============ VISTA: BITACORA ============ -->
+    <div class="view active" id="view-bitacora">
+      <div class="row" style="justify-content:space-between;margin-bottom:6px;">
+        <span></span>
+        <span id="count"></span>
+      </div>
+
+      <div class="controls">
+        <div class="row">
+          <input type="text" id="search" placeholder="grep -i 'título, contenido o etiqueta'…" />
+          <button class="primary" id="btnNew">+ nueva_entrada</button>
+        </div>
+        <div class="row" id="tipoFilters">
+          <span class="pill active" data-tipo="todos">todos</span>
+          <span class="pill" data-tipo="error">error</span>
+          <span class="pill" data-tipo="apunte">apunte</span>
+          <span class="pill" data-tipo="comando">comando</span>
+          <span class="pill" data-tipo="general">general</span>
+        </div>
+        <div class="row" id="sistemaFilters">
+          <span class="pill active" data-sistema="todos">todo sistema</span>
+          <span class="pill" data-sistema="macOS">macOS</span>
+          <span class="pill" data-sistema="Windows">Windows</span>
+          <span class="pill" data-sistema="Linux">Linux</span>
+          <span class="pill" data-sistema="iOS">iOS</span>
+          <span class="pill" data-sistema="Multiplataforma">multiplataforma</span>
+        </div>
+        <div class="row" id="tagFilters"></div>
+      </div>
+
+      <div id="entries"></div>
+    </div>
+
+    <!-- ============ VISTA: SANDBOX ============ -->
+    <div class="view" id="view-sandbox">
+      <div class="sandbox-wrap">
+        <div>
+          <div class="field" style="margin-bottom:8px;">
+            <label>código javascript</label>
+            <textarea id="sandboxCode" placeholder="// escribe y corre JS aquí&#10;const nums = [1,2,3];&#10;console.log(nums.map(n => n * 2));"></textarea>
+          </div>
+          <div class="sandbox-actions">
+            <button class="primary" id="btnRun">▶ ejecutar</button>
+            <button class="ghost" id="btnClearOut">limpiar salida</button>
+            <button class="ghost" id="btnSaveSnippet">guardar en bitácora</button>
+            <span class="sandbox-hint">Ctrl/Cmd + Enter para ejecutar</span>
+          </div>
+        </div>
+        <div>
+          <div class="field" style="margin-bottom:6px;"><label>salida</label></div>
+          <div id="sandboxOutput"><div class="out-muted">// la salida de console.log() y del resultado aparece aquí</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: crear / editar -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h2 id="modalTitle">nueva entrada</h2>
+    <input type="hidden" id="editId" />
+
+    <div class="field">
+      <label>título</label>
+      <input type="text" id="fTitulo" placeholder="p. ej. Error al firmar PDF en Klyron ERP" />
+    </div>
+
+    <div class="row" style="gap:14px;">
+      <div class="field" style="flex:1;">
+        <label>tipo</label>
+        <select id="fTipo">
+          <option value="error">error / solución</option>
+          <option value="apunte">apunte</option>
+          <option value="comando">comando</option>
+          <option value="general">general</option>
+        </select>
+      </div>
+      <div class="field" style="flex:1;">
+        <label>sistema</label>
+        <select id="fSistema">
+          <option value="general">general</option>
+          <option value="macOS">macOS</option>
+          <option value="Windows">Windows</option>
+          <option value="Linux">Linux</option>
+          <option value="iOS">iOS</option>
+          <option value="Multiplataforma">Multiplataforma</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" style="gap:14px;">
+      <div class="field" style="flex:1;">
+        <label>contexto (opcional)</label>
+        <input type="text" id="fContexto" placeholder="p. ej. Klyron ERP, notaría" />
+      </div>
+      <div class="field" style="flex:1;" id="fLenguajeWrap">
+        <label>lenguaje (para comandos)</label>
+        <select id="fLenguaje">
+          <option value="bash">bash / zsh</option>
+          <option value="powershell">powershell</option>
+          <option value="javascript">javascript</option>
+          <option value="swift">swift</option>
+          <option value="sql">sql</option>
+          <option value="python">python</option>
+          <option value="json">json</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>contenido</label>
+      <textarea id="fContenido" placeholder="Describe el error y la solución, el apunte, o el comando con una breve explicación…"></textarea>
+    </div>
+
+    <div class="field">
+      <label>etiquetas (separadas por coma)</label>
+      <input type="text" id="fTags" placeholder="p. ej. pm2, windows, sqlite" />
+    </div>
+
+    <div class="modal-actions">
+      <button class="ghost" id="btnCancel">cancelar</button>
+      <button class="primary" id="btnSave">guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ============================================================
+  // CONFIGURA AQUI TU PROYECTO DE SUPABASE
+  // (Project Settings -> API Keys, dentro de supabase.com)
+  // ============================================================
+  const SUPABASE_URL = 'https://dmhpobqdforxsvlvrcng.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_odKULRJ9j1Q1fqvcJz8U0w_lV5U-nmM';
+  // ============================================================
+
+  let sb = null;
+  const isConfigured = SUPABASE_URL.startsWith('http') && SUPABASE_ANON_KEY.length > 20;
+  if (isConfigured) {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  } else {
+    document.getElementById('configBanner').style.display = 'block';
+  }
+
+  let allEntries = [];
+  let activeTipo = 'todos';
+  let activeSistema = 'todos';
+  let activeTags = new Set();
+  let searchTerm = '';
+
+  const entriesEl = document.getElementById('entries');
+  const countEl = document.getElementById('count');
+  const tagFiltersEl = document.getElementById('tagFilters');
+
+  function fmtDate(iso){
+    const d = new Date(iso);
+    return d.toLocaleString('es-PE', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  }
+  function escapeHtml(str){
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function loadEntries(){
+    if (!isConfigured) {
+      entriesEl.innerHTML = '<div class="empty">Configura Supabase para empezar a guardar entradas.</div>';
+      return;
+    }
+    entriesEl.innerHTML = '<div class="loading">cargando…</div>';
+    const { data, error } = await sb.from('entries').select('*').order('created_at', { ascending:false });
+    if (error) {
+      entriesEl.innerHTML = `<div class="empty">Error al cargar: ${escapeHtml(error.message)}</div>`;
+      return;
+    }
+    allEntries = data || [];
+    renderTagFilters();
+    render();
+  }
+
+  function renderTagFilters(){
+    const tagSet = new Set();
+    allEntries.forEach(e => (e.tags || []).forEach(t => tagSet.add(t)));
+    const tags = Array.from(tagSet).sort();
+    tagFiltersEl.innerHTML = tags.map(t =>
+      `<span class="tagchip ${activeTags.has(t) ? 'active' : ''}" data-tag="${escapeHtml(t)}">#${escapeHtml(t)}</span>`
+    ).join('');
+    tagFiltersEl.querySelectorAll('.tagchip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const tag = chip.dataset.tag;
+        activeTags.has(tag) ? activeTags.delete(tag) : activeTags.add(tag);
+        renderTagFilters();
+        render();
+      });
+    });
+  }
+
+  function render(){
+    let list = allEntries.filter(e => activeTipo === 'todos' || e.tipo === activeTipo);
+    if (activeSistema !== 'todos') {
+      list = list.filter(e => (e.sistema || 'general') === activeSistema);
+    }
+    if (activeTags.size > 0) {
+      list = list.filter(e => (e.tags || []).some(t => activeTags.has(t)));
+    }
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      list = list.filter(e =>
+        e.titulo.toLowerCase().includes(q) ||
+        e.contenido.toLowerCase().includes(q) ||
+        (e.contexto || '').toLowerCase().includes(q) ||
+        (e.tags || []).some(t => t.toLowerCase().includes(q))
+      );
+    }
+
+    countEl.textContent = `${list.length} entrada${list.length === 1 ? '' : 's'}`;
+
+    if (list.length === 0) {
+      entriesEl.innerHTML = '<div class="empty">Nada por aquí. Prueba otro filtro o agrega una entrada nueva.</div>';
+      return;
+    }
+
+    entriesEl.innerHTML = list.map(e => {
+      const isComando = e.tipo === 'comando';
+      const lang = e.lenguaje || 'bash';
+      const bodyHtml = isComando
+        ? `<div class="code-block">
+             <button class="copy-btn" onclick="copyCode(this)">copiar</button>
+             <pre><code class="language-${escapeHtml(lang)}">${escapeHtml(e.contenido)}</code></pre>
+           </div>`
+        : `<div class="entry-body">${escapeHtml(e.contenido)}</div>`;
+
+      return `
+      <div class="entry" data-tipo="${e.tipo}">
+        <div class="entry-head">
+          <span class="badge" data-tipo="${e.tipo}">${e.tipo}</span>
+          ${e.sistema && e.sistema !== 'general' ? `<span class="badge sistema">${escapeHtml(e.sistema)}</span>` : ''}
+          <span class="entry-title">${escapeHtml(e.titulo)}</span>
+          ${e.contexto ? `<span class="entry-ctx">· ${escapeHtml(e.contexto)}</span>` : ''}
+          <span class="entry-time">${fmtDate(e.created_at)}</span>
+        </div>
+        ${bodyHtml}
+        ${(e.tags && e.tags.length) ? `<div class="entry-tags">${e.tags.map(t => `<span class="tagchip">#${escapeHtml(t)}</span>`).join('')}</div>` : ''}
+        <div class="entry-actions">
+          <button onclick="openEdit('${e.id}')">editar</button>
+          <button class="danger" onclick="removeEntry('${e.id}')">eliminar</button>
+        </div>
+      </div>
+    `;
+    }).join('');
+
+    if (window.Prism) Prism.highlightAllUnder(entriesEl);
+  }
+
+  window.copyCode = function(btn){
+    const code = btn.parentElement.querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      const old = btn.textContent;
+      btn.textContent = 'copiado ✓';
+      setTimeout(() => { btn.textContent = old; }, 1200);
+    });
+  };
+
+  // ---------- filtros ----------
+  document.getElementById('tipoFilters').addEventListener('click', (ev) => {
+    const pill = ev.target.closest('.pill');
+    if (!pill) return;
+    document.querySelectorAll('#tipoFilters .pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    activeTipo = pill.dataset.tipo;
+    render();
+  });
+  document.getElementById('sistemaFilters').addEventListener('click', (ev) => {
+    const pill = ev.target.closest('.pill');
+    if (!pill) return;
+    document.querySelectorAll('#sistemaFilters .pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    activeSistema = pill.dataset.sistema;
+    render();
+  });
+  document.getElementById('search').addEventListener('input', (ev) => {
+    searchTerm = ev.target.value;
+    render();
+  });
+
+  // ---------- tabs ----------
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('view-' + tab.dataset.view).classList.add('active');
+    });
+  });
+
+  // ---------- modal ----------
+  const overlay = document.getElementById('overlay');
+  const modalTitle = document.getElementById('modalTitle');
+  const fTitulo = document.getElementById('fTitulo');
+  const fTipo = document.getElementById('fTipo');
+  const fSistema = document.getElementById('fSistema');
+  const fContexto = document.getElementById('fContexto');
+  const fLenguaje = document.getElementById('fLenguaje');
+  const fLenguajeWrap = document.getElementById('fLenguajeWrap');
+  const fContenido = document.getElementById('fContenido');
+  const fTags = document.getElementById('fTags');
+  const editId = document.getElementById('editId');
+
+  function toggleLenguajeField(){
+    fLenguajeWrap.style.display = fTipo.value === 'comando' ? 'flex' : 'none';
+  }
+  fTipo.addEventListener('change', toggleLenguajeField);
+
+  function openNew(prefill){
+    modalTitle.textContent = 'nueva entrada';
+    editId.value = '';
+    fTitulo.value = (prefill && prefill.titulo) || '';
+    fTipo.value = (prefill && prefill.tipo) || 'error';
+    fSistema.value = (prefill && prefill.sistema) || 'general';
+    fContexto.value = (prefill && prefill.contexto) || '';
+    fLenguaje.value = (prefill && prefill.lenguaje) || 'bash';
+    fContenido.value = (prefill && prefill.contenido) || '';
+    fTags.value = (prefill && prefill.tags) || '';
+    toggleLenguajeField();
+    overlay.classList.add('open');
+    fTitulo.focus();
+  }
+
+  window.openEdit = function(id){
+    const e = allEntries.find(x => x.id === id);
+    if (!e) return;
+    modalTitle.textContent = 'editar entrada';
+    editId.value = e.id;
+    fTitulo.value = e.titulo;
+    fTipo.value = e.tipo;
+    fSistema.value = e.sistema || 'general';
+    fContexto.value = e.contexto || '';
+    fLenguaje.value = e.lenguaje || 'bash';
+    fContenido.value = e.contenido;
+    fTags.value = (e.tags || []).join(', ');
+    toggleLenguajeField();
+    overlay.classList.add('open');
+    fTitulo.focus();
+  };
+
+  window.removeEntry = async function(id){
+    if (!confirm('¿Eliminar esta entrada? No se puede deshacer.')) return;
+    const { error } = await sb.from('entries').delete().eq('id', id);
+    if (error) { alert('Error al eliminar: ' + error.message); return; }
+    await loadEntries();
+  };
+
+  document.getElementById('btnNew').addEventListener('click', () => openNew());
+  document.getElementById('btnCancel').addEventListener('click', () => overlay.classList.remove('open'));
+  overlay.addEventListener('click', (ev) => { if (ev.target === overlay) overlay.classList.remove('open'); });
+
+  document.getElementById('btnSave').addEventListener('click', async () => {
+    const titulo = fTitulo.value.trim();
+    const contenido = fContenido.value.trim();
+    if (!titulo || !contenido) { alert('Título y contenido son obligatorios.'); return; }
+
+    const tags = fTags.value.split(',').map(t => t.trim()).filter(Boolean);
+    const payload = {
+      titulo,
+      tipo: fTipo.value,
+      sistema: fSistema.value,
+      contexto: fContexto.value.trim() || null,
+      lenguaje: fTipo.value === 'comando' ? fLenguaje.value : null,
+      contenido,
+      tags,
+      updated_at: new Date().toISOString()
+    };
+
+    let error;
+    if (editId.value) {
+      ({ error } = await sb.from('entries').update(payload).eq('id', editId.value));
+    } else {
+      ({ error } = await sb.from('entries').insert(payload));
+    }
+    if (error) { alert('Error al guardar: ' + error.message); return; }
+    overlay.classList.remove('open');
+    await loadEntries();
+  });
+
+  fContenido.addEventListener('keydown', (ev) => {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') {
+      document.getElementById('btnSave').click();
+    }
+  });
+
+  loadEntries();
+
+  // ============================================================
+  // SANDBOX DE JAVASCRIPT
+  // ============================================================
+  const sandboxCode = document.getElementById('sandboxCode');
+  const sandboxOutput = document.getElementById('sandboxOutput');
+
+  function printOut(type, text){
+    const line = document.createElement('div');
+    line.className = 'out-line out-' + type;
+    line.textContent = text;
+    sandboxOutput.appendChild(line);
+    sandboxOutput.scrollTop = sandboxOutput.scrollHeight;
+  }
+
+  function stringifyArg(a){
+    if (typeof a === 'string') return a;
+    try { return JSON.stringify(a, null, 2); } catch(e) { return String(a); }
+  }
+
+  function runSandbox(){
+    sandboxOutput.innerHTML = '';
+    const code = sandboxCode.value;
+    if (!code.trim()) { printOut('muted', '// nada que ejecutar'); return; }
+
+    const fakeConsole = {
+      log: (...args) => printOut('log', args.map(stringifyArg).join(' ')),
+      warn: (...args) => printOut('log', '⚠ ' + args.map(stringifyArg).join(' ')),
+      error: (...args) => printOut('error', args.map(stringifyArg).join(' ')),
+      info: (...args) => printOut('log', args.map(stringifyArg).join(' '))
+    };
+
+    try {
+      const fn = new Function('console', code);
+      const result = fn(fakeConsole);
+      if (result !== undefined) {
+        printOut('return', '⟶ ' + stringifyArg(result));
+      }
+    } catch (err) {
+      printOut('error', '✗ ' + err.message);
+    }
+  }
+
+  document.getElementById('btnRun').addEventListener('click', runSandbox);
+  document.getElementById('btnClearOut').addEventListener('click', () => {
+    sandboxOutput.innerHTML = '<div class="out-muted">// salida limpiada</div>';
+  });
+  sandboxCode.addEventListener('keydown', (ev) => {
+    if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') runSandbox();
+  });
+  document.getElementById('btnSaveSnippet').addEventListener('click', () => {
+    const code = sandboxCode.value.trim();
+    if (!code) { alert('Escribe algo de código primero.'); return; }
+    document.querySelector('.tab[data-view="bitacora"]').click();
+    openNew({ tipo:'comando', sistema:'Multiplataforma', lenguaje:'javascript', contenido: code, titulo:'', tags:'sandbox' });
+  });
+</script>
+</body>
+</html>
