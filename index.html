@@ -464,8 +464,8 @@
         <label>contexto (opcional)</label>
         <input type="text" id="fContexto" placeholder="p. ej. Klyron ERP, notaría" />
       </div>
-      <div class="field" style="flex:1;" id="fLenguajeWrap">
-        <label>lenguaje (para comandos)</label>
+      <div class="field" style="flex:1;">
+        <label>lenguaje del bloque a insertar</label>
         <select id="fLenguaje">
           <option value="bash">bash / zsh</option>
           <option value="powershell">powershell</option>
@@ -479,8 +479,11 @@
     </div>
 
     <div class="field">
-      <label>contenido</label>
-      <textarea id="fContenido" placeholder="Describe el error y la solución, el apunte, o el comando con una breve explicación…"></textarea>
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <label style="margin:0;">contenido (notas + comandos)</label>
+        <button type="button" class="ghost" id="btnInsertCode" style="padding:4px 9px;font-size:10.5px;">+ bloque de código</button>
+      </div>
+      <textarea id="fContenido" placeholder="Escribe tus notas libremente, como un README.&#10;&#10;Para agregar un comando con botón de copiar, envuélvelo así:&#10;```bash&#10;npm install&#10;```&#10;&#10;Puedes mezclar todo el texto y bloques que quieras en la misma entrada."></textarea>
     </div>
 
     <div class="field">
@@ -565,6 +568,43 @@
     });
   }
 
+  function parseContent(text){
+    const regex = /```(\w+)?\n?([\s\S]*?)```/g;
+    const segments = [];
+    let lastIndex = 0, match;
+    while ((match = regex.exec(text)) !== null) {
+      if (match.index > lastIndex) segments.push({ type:'text', content: text.slice(lastIndex, match.index) });
+      segments.push({ type:'code', lang: (match[1] || 'bash').toLowerCase(), content: match[2] });
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < text.length) segments.push({ type:'text', content: text.slice(lastIndex) });
+    return segments;
+  }
+
+  function codeBlockHtml(content, lang){
+    return `<div class="code-block">
+      <button class="copy-btn" onclick="copyCode(this)">copiar</button>
+      <pre><code class="language-${escapeHtml(lang)}">${escapeHtml(content.trim())}</code></pre>
+    </div>`;
+  }
+
+  function renderEntryBody(e){
+    const segments = parseContent(e.contenido || '');
+    const hasCodeFence = segments.some(s => s.type === 'code');
+
+    // Compatibilidad: entradas viejas de tipo "comando" sin bloques ``` -> todo el contenido es un solo bloque
+    if (!hasCodeFence && e.tipo === 'comando') {
+      return codeBlockHtml(e.contenido, e.lenguaje || 'bash');
+    }
+
+    return segments.map(seg => {
+      if (seg.type === 'code') return codeBlockHtml(seg.content, seg.lang);
+      const trimmed = seg.content.trim();
+      if (!trimmed) return '';
+      return `<div class="entry-body">${escapeHtml(trimmed)}</div>`;
+    }).join('');
+  }
+
   function render(){
     let list = allEntries.filter(e => activeTipo === 'todos' || e.tipo === activeTipo);
     if (activeSistema !== 'todos') {
@@ -591,14 +631,7 @@
     }
 
     entriesEl.innerHTML = list.map(e => {
-      const isComando = e.tipo === 'comando';
-      const lang = e.lenguaje || 'bash';
-      const bodyHtml = isComando
-        ? `<div class="code-block">
-             <button class="copy-btn" onclick="copyCode(this)">copiar</button>
-             <pre><code class="language-${escapeHtml(lang)}">${escapeHtml(e.contenido)}</code></pre>
-           </div>`
-        : `<div class="entry-body">${escapeHtml(e.contenido)}</div>`;
+      const bodyHtml = renderEntryBody(e);
 
       return `
       <div class="entry" data-tipo="${e.tipo}">
@@ -671,15 +704,22 @@
   const fSistema = document.getElementById('fSistema');
   const fContexto = document.getElementById('fContexto');
   const fLenguaje = document.getElementById('fLenguaje');
-  const fLenguajeWrap = document.getElementById('fLenguajeWrap');
   const fContenido = document.getElementById('fContenido');
   const fTags = document.getElementById('fTags');
   const editId = document.getElementById('editId');
 
-  function toggleLenguajeField(){
-    fLenguajeWrap.style.display = fTipo.value === 'comando' ? 'flex' : 'none';
-  }
-  fTipo.addEventListener('change', toggleLenguajeField);
+  document.getElementById('btnInsertCode').addEventListener('click', () => {
+    const lang = fLenguaje.value || 'bash';
+    const start = fContenido.selectionStart;
+    const end = fContenido.selectionEnd;
+    const before = fContenido.value.slice(0, start);
+    const after = fContenido.value.slice(end);
+    const snippet = '```' + lang + '\n\n```';
+    fContenido.value = before + snippet + after;
+    const cursorPos = start + ('```' + lang + '\n').length;
+    fContenido.focus();
+    fContenido.setSelectionRange(cursorPos, cursorPos);
+  });
 
   function openNew(prefill){
     modalTitle.textContent = 'nueva entrada';
@@ -691,7 +731,6 @@
     fLenguaje.value = (prefill && prefill.lenguaje) || 'bash';
     fContenido.value = (prefill && prefill.contenido) || '';
     fTags.value = (prefill && prefill.tags) || '';
-    toggleLenguajeField();
     overlay.classList.add('open');
     fTitulo.focus();
   }
@@ -708,7 +747,6 @@
     fLenguaje.value = e.lenguaje || 'bash';
     fContenido.value = e.contenido;
     fTags.value = (e.tags || []).join(', ');
-    toggleLenguajeField();
     overlay.classList.add('open');
     fTitulo.focus();
   };
